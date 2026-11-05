@@ -1,51 +1,66 @@
+using Lab1_Insurance;
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
-
-// СТРИМРИДЕР ЭТО АНАЛОГ ФАЙЛА С ОТКРЫТИЕМ НА ЧТЕНИЕ, А СТРИМРАЙТЕР ЭТО АНАЛОГ ФАЙЛА С ОТКРЫТИЕМ НА ЗАПИСЬ
-
-namespace Lab1_Cars
+namespace Lab2_Insurance
 {
     class Program
     {
         const int MAX_CARS = 100;
-        const string InputFileName = "input_3.txt";
-
+        const int MAX_POLICIES = 200;
+        const string CarsFileName = "input_cars.txt";
+        const string PoliciesFileName = "input_policies.txt";
         static void Main()
         {
+            // Инициализируем справочник моделей
+            CarUn.InitModels();
             Encoding cp1251 = Encoding.GetEncoding(1251);
             Console.InputEncoding = cp1251;
             Console.OutputEncoding = cp1251;
-
             TCar[] cars = new TCar[MAX_CARS];
             int carCount = 0;
+            TPolicy[] policies = new TPolicy[MAX_POLICIES];
+            int policyCount = 0;
             int choice = -1;
-
-            if (File.Exists(InputFileName)) // Проверяем, существует ли файл
+            // Загрузка автомобилей из файла
+            if (File.Exists(CarsFileName))
             {
-                StreamReader ft = new StreamReader(InputFileName, cp1251);
-                CarUn.AddFromTextFile(cars, ref carCount, MAX_CARS, ft);
+                StreamReader ft = new StreamReader(CarsFileName, cp1251);
+                CarUn.AddCarsFromTextFile(cars, ref carCount, MAX_CARS, ft);
                 ft.Close();
-                Console.WriteLine("Данные успешно импортированы из файла " + InputFileName + " (Записей: " + carCount + ").");
+                Console.WriteLine("Данные авто успешно импортированы из файла " + CarsFileName + " (Записей: " + carCount + ").");
             }
             else
             {
-                Console.WriteLine("[Предупреждение] Файл " + InputFileName + " не найден.");
+                Console.WriteLine("[Предупреждение] Файл " + CarsFileName + " не найден.");
             }
-
+            // Загрузка полисов из файла
+            if (File.Exists(PoliciesFileName))
+            {
+                StreamReader ft = new StreamReader(PoliciesFileName, cp1251);
+                CarUn.AddPoliciesFromTextFile(policies, ref policyCount, MAX_POLICIES, ft, cars, carCount);
+                ft.Close();
+                Console.WriteLine("Данные полисов успешно импортированы из файла " + PoliciesFileName + " (Записей: " + policyCount + ").");
+            }
+            else
+            {
+                Console.WriteLine("[Предупреждение] Файл " + PoliciesFileName + " не найден.");
+            }
+            // Главный цикл меню
             while (choice != 0)
             {
-                Console.WriteLine("\n===== УПРАВЛЕНИЕ УЧЕТОМ АВТОМОБИЛЕЙ =====");
-                Console.WriteLine("1. Просмотреть список автомобилей (таблица)");
-                Console.WriteLine("2. Отсортировать список (по алфавиту)");
-                Console.WriteLine("3. Поиск автомобилей марки без ТО");
-                Console.WriteLine("4. Добавить новый автомобиль");
+                Console.WriteLine("\n===== УЧЁТ АВТОМОБИЛЕЙ И СТРАХОВЫХ ПОЛИСОВ =====");
+                Console.WriteLine("1. Просмотреть список автомобилей");
+                Console.WriteLine("2. Просмотреть список полисов");
+                Console.WriteLine("3. Отсортировать список автомобилей");
+                Console.WriteLine("4. Поиск автомобилей марки без ТО");
+                Console.WriteLine("5. Добавить новый автомобиль");
+                Console.WriteLine("6. Оформить новый полис");
                 Console.WriteLine("0. Выход из программы");
-                Console.WriteLine("==========================================");
+                Console.WriteLine("================================================");
                 Console.Write("Ваш выбор: ");
-
                 choice = CarUn.ReadInt(0);
-
                 if (choice == 1)
                 {
                     Console.WriteLine("\n--- ТЕКУЩИЙ СПИСОК АВТОМОБИЛЕЙ ---");
@@ -53,23 +68,29 @@ namespace Lab1_Cars
                 }
                 else if (choice == 2)
                 {
-                    SortMenu(cars, carCount);
+                    Console.WriteLine("\n--- ТЕКУЩИЙ СПИСОК ПОЛИСОВ ---");
+                    CarUn.PrintAllPoliciesTable(policies, policyCount, cars, carCount);
                 }
                 else if (choice == 3)
                 {
-                    SearchMenu(cars, carCount);
+                    SortMenu(cars, carCount);
                 }
                 else if (choice == 4)
                 {
+                    SearchMenu(cars, carCount);
+                }
+                else if (choice == 5)
+                {
                     AddCarMenu(cars, ref carCount);
                 }
+                else if (choice == 6)
+                {
+                    AddPolicyMenu(cars, carCount, policies, ref policyCount);
+                }
             }
-
             Console.WriteLine("\nПрограмма завершила работу.");
         }
-
-        // Сортировка
-
+        // МЕНЮ СОРТИРОВКИ
         static void SortMenu(TCar[] cars, int carCount)
         {
             if (carCount == 0)
@@ -85,9 +106,7 @@ namespace Lab1_Cars
                 Console.WriteLine("4. По номеру");
                 Console.WriteLine("5. По статусу тех. осмотра");
                 Console.Write("Ваш выбор: ");
-
                 int sortChoice = CarUn.ReadInt(0);
-
                 if (sortChoice == 1) { CarUn.SortBySurname(cars, carCount); Console.WriteLine("[Успех] Отсортировано по фамилии."); }
                 else if (sortChoice == 2) { CarUn.SortByBrand(cars, carCount); Console.WriteLine("[Успех] Отсортировано по марке."); }
                 else if (sortChoice == 3) { CarUn.SortByModel(cars, carCount); Console.WriteLine("[Успех] Отсортировано по модели."); }
@@ -96,9 +115,7 @@ namespace Lab1_Cars
                 else { Console.WriteLine("[Ошибка] Неверный критерий сортировки."); }
             }
         }
-
-        // Поиск
-
+        // МЕНЮ ПОИСКА
         static void SearchMenu(TCar[] cars, int carCount)
         {
             if (carCount == 0)
@@ -116,15 +133,11 @@ namespace Lab1_Cars
                 }
             }
         }
-
-        // Добавление
-
-        // Выбор марки из списка. Возвращает индекс или -1, если пользователь вышел в меню
+        // ВЫБОР МАРКИ
         static int SelectBrand(string prompt)
         {
             int valid = 1;
             int brandIndex = -1;
-
             while (brandIndex == -1 && valid == 1)
             {
                 Console.WriteLine("\n--- МАРКА ---");
@@ -136,9 +149,7 @@ namespace Lab1_Cars
                     i++;
                 }
                 Console.Write("0. Выйти в меню\nВаш выбор: ");
-
                 int select = CarUn.ReadInt(0);
-
                 if (select == 0)
                 {
                     valid = 0;
@@ -158,32 +169,29 @@ namespace Lab1_Cars
             }
             return brandIndex;
         }
-
-        // Выбор модели для марки. Возвращает индекс или -1
+        // ВЫБОР МОДЕЛИ
         static int SelectModel(int brandIndex)
         {
             int valid = 1;
             int modelIndex = -1;
-
+            int modelsCount = CarUn.GetModelsCount(brandIndex);
             while (modelIndex == -1 && valid == 1)
             {
                 Console.WriteLine("\n--- МОДЕЛЬ ---");
                 Console.WriteLine("Выберите модель для " + CarUn.Brands[brandIndex] + ":");
                 int m = 0;
-                while (m < CarUn.ModelsPerBrand)
+                while (m < modelsCount)
                 {
-                    Console.WriteLine((m + 1) + ". " + CarUn.Models[brandIndex][m]);
+                    Console.WriteLine((m + 1) + ". " + CarUn.Models[brandIndex][m].Name + " (" + CarUn.Models[brandIndex][m].Year + ")");
                     m++;
                 }
                 Console.Write("0. Выйти в меню\nВаш выбор: ");
-
                 int select = CarUn.ReadInt(0);
-
                 if (select == 0)
                 {
                     valid = 0;
                 }
-                else if (select >= 1 && select <= CarUn.ModelsPerBrand)
+                else if (select >= 1 && select <= modelsCount)
                 {
                     modelIndex = select - 1;
                 }
@@ -198,14 +206,12 @@ namespace Lab1_Cars
             }
             return modelIndex;
         }
-
-        // Ввод строкового поля с проверкой. Возвращает 1, если значение введено, 0 - если пользователь вышел
+        // ВВОД СТРОКОВОГО ПОЛЯ
         static int ReadField(string title, string prompt, string errorText, Func<string, bool> check, out string value)
         {
             int valid = 1;
             int ok = 0;
             value = "";
-
             while (ok == 0 && valid == 1)
             {
                 Console.WriteLine("\n--- " + title + " ---");
@@ -231,7 +237,7 @@ namespace Lab1_Cars
             }
             return valid;
         }
-
+        // ДОБАВЛЕНИЕ АВТОМОБИЛЯ
         static void AddCarMenu(TCar[] cars, ref int carCount)
         {
             if (carCount >= MAX_CARS)
@@ -243,32 +249,17 @@ namespace Lab1_Cars
                 TCar newCar = TCar.ZeroRec;
                 int valid = 1;
                 Console.WriteLine("\n=== ДОБАВЛЕНИЕ НОВОГО АВТОМОБИЛЯ ===");
-
                 // 1. Марка
                 int brandIndex = SelectBrand("Выберите марку автомобиля:");
-                if (brandIndex == -1)
-                {
-                    valid = 0;
-                }
-                else
-                {
-                    newCar.Brand = CarUn.Brands[brandIndex];
-                }
-
+                if (brandIndex == -1) valid = 0;
+                else newCar.Brand = CarUn.Brands[brandIndex];
                 // 2. Модель
                 if (valid == 1)
                 {
                     int modelIndex = SelectModel(brandIndex);
-                    if (modelIndex == -1)
-                    {
-                        valid = 0;
-                    }
-                    else
-                    {
-                        newCar.Model = CarUn.Models[brandIndex][modelIndex];
-                    }
+                    if (modelIndex == -1) valid = 0;
+                    else newCar.Model = CarUn.Models[brandIndex][modelIndex].Name;
                 }
-
                 // 3. Гос. номер
                 if (valid == 1)
                 {
@@ -278,7 +269,6 @@ namespace Lab1_Cars
                         s => CarUn.IsValidNumber(s) == 1,
                         out newCar.Number);
                 }
-
                 // 4. Фамилия
                 if (valid == 1)
                 {
@@ -288,7 +278,6 @@ namespace Lab1_Cars
                         s => CarUn.IsValidFIO(s, 1, 20) == 1,
                         out newCar.Owner.Surname);
                 }
-
                 // 5. Имя
                 if (valid == 1)
                 {
@@ -298,7 +287,6 @@ namespace Lab1_Cars
                         s => CarUn.IsValidFIO(s, 2, 20) == 1,
                         out newCar.Owner.Name);
                 }
-
                 // 6. Отчество
                 if (valid == 1)
                 {
@@ -308,8 +296,43 @@ namespace Lab1_Cars
                         s => CarUn.IsValidPatronymic(s) == 1,
                         out newCar.Owner.Patronymic);
                 }
-
-                // 7. Техосмотр
+                // 7. Возраст
+                int ageValid = 0;
+                while (ageValid == 0 && valid == 1)
+                {
+                    Console.WriteLine("\n--- ВОЗРАСТ ---");
+                    Console.Write("Введите возраст владельца (18..122): ");
+                    int age = CarUn.ReadInt(-1);
+                    if (CarUn.IsValidAge(age) == 1)
+                    {
+                        newCar.Owner.Age = age;
+                        ageValid = 1;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Возраст должен быть от 18 до 122!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                // 8. Стаж
+                int expValid = 0;
+                while (expValid == 0 && valid == 1)
+                {
+                    Console.WriteLine("\n--- СТАЖ ---");
+                    Console.Write("Введите водительский стаж (0..104, возраст-стаж>=18): ");
+                    int exp = CarUn.ReadInt(-1);
+                    if (CarUn.IsValidExp(newCar.Owner.Age, exp) == 1)
+                    {
+                        newCar.Owner.Exp = exp;
+                        expValid = 1;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Некорректный стаж!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                // 9. Техосмотр
                 int inspectionValid = 0;
                 while (inspectionValid == 0 && valid == 1)
                 {
@@ -324,22 +347,154 @@ namespace Lab1_Cars
                     else
                     {
                         Console.WriteLine("[Ошибка] Статус должен быть 0 или 1!");
-                        if (CarUn.AskRetryOrExit() == 0)
-                        {
-                            valid = 0;
-                        }
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
                     }
                 }
-
                 if (valid == 1)
                 {
                     if (CarUn.AddCar(cars, ref carCount, MAX_CARS, newCar) == 1)
                     {
-                        Console.WriteLine("[Успех] Автомобиль " + newCar.Brand + " " + newCar.Model + " (" + newCar.Number + ") успешно добавлен!");
+                        Console.WriteLine("[Успех] Автомобиль " + newCar.Brand + " " +
+                            CarUn.FormatModel(newCar.Brand, newCar.Model) + " (" + newCar.Number + ") успешно добавлен!");
                     }
                     else
                     {
                         Console.WriteLine("[Ошибка] Не удалось добавить запись (переполнение).");
+                    }
+                }
+            }
+        }
+        // ОФОРМЛЕНИЕ НОВОГО ПОЛИСА
+        static void AddPolicyMenu(TCar[] cars, int carCount, TPolicy[] policies, ref int policyCount)
+        {
+            int canProceed = 1;
+            if (carCount == 0)
+            {
+                Console.WriteLine("[Ошибка] Список автомобилей пуст. Нечего страховать.");
+                canProceed = 0;
+            }
+            else if (policyCount >= MAX_POLICIES)
+            {
+                Console.WriteLine("[Ошибка] Переполнение: достигнут лимит полисов (" + MAX_POLICIES + ").");
+                canProceed = 0;
+            }
+            if (canProceed == 1)
+            {
+                TPolicy newPol = TPolicy.ZeroRec;
+                int valid = 1;
+                Console.WriteLine("\n=== ОФОРМЛЕНИЕ НОВОГО ПОЛИСА ===");
+                // 1. Выбор автомобиля по номеру
+                string carNumber = "";
+                int carIndex = -1;
+                while (carIndex == -1 && valid == 1)
+                {
+                    Console.WriteLine("\n--- АВТОМОБИЛЬ ---");
+                    Console.Write("Введите гос. номер автомобиля: ");
+                    carNumber = Console.ReadLine();
+                    if (carNumber == null) carNumber = "";
+                    carIndex = CarUn.FindCarByNumber(cars, carCount, carNumber);
+                    if (carIndex == -1)
+                    {
+                        Console.WriteLine("[Ошибка] Автомобиль с таким номером не найден!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                if (valid == 1) newPol.CarNumber = carNumber;
+                // 2. Тип полиса
+                int typeValid = 0;
+                while (typeValid == 0 && valid == 1)
+                {
+                    Console.WriteLine("\n--- ТИП ПОЛИСА ---");
+                    Console.WriteLine("1. ОСАГО");
+                    Console.WriteLine("2. КАСКО");
+                    Console.Write("Ваш выбор: ");
+                    int type = CarUn.ReadInt(-1);
+                    if (type == 1 || type == 2)
+                    {
+                        // Проверка: можно ли оформить такой тип
+                        // ОСАГО нельзя без ТО
+                        if (type == 1 && cars[carIndex].HasInspection == 0)
+                        {
+                            Console.WriteLine("[Ошибка] ОСАГО нельзя оформить на авто без пройденного ТО!");
+                            if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                        }
+                        // Проверка: нет ли уже активного полиса такого типа
+                        else if (CarUn.CanIssuePolicy(policies, policyCount, carNumber, type) == 0)
+                        {
+                            Console.WriteLine("[Ошибка] На этот автомобиль уже оформлен активный полис данного типа!");
+                            if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                        }
+                        else
+                        {
+                            newPol.Type = type;
+                            typeValid = 1;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Введите 1 или 2!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                // 3. Дата оформления
+                int dateValid = 0;
+                while (dateValid == 0 && valid == 1)
+                {
+                    Console.WriteLine("\n--- ДАТА ОФОРМЛЕНИЯ ---");
+                    Console.Write("Введите дату (формат ДД.ММ.ГГГГ, год 2000..2026): ");
+                    string s = Console.ReadLine();
+                    DateTime d;
+                    if (DateTime.TryParseExact(s, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out d))
+                    {
+                        if (d.Year >= 2000 && d.Year <= 2026)
+                        {
+                            newPol.Date = d;
+                            dateValid = 1;
+                        }
+                        else
+                        {
+                            Console.WriteLine("[Ошибка] Год должен быть от 2000 до 2026!");
+                            if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Неверный формат даты!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                // 4. Срок действия
+                int termValid = 0;
+                while (termValid == 0 && valid == 1)
+                {
+                    Console.WriteLine("\n--- СРОК ДЕЙСТВИЯ ---");
+                    int maxTerm = (newPol.Type == 1) ? 12 : 84;
+                    Console.Write("Введите срок действия в месяцах (1.." + maxTerm + "): ");
+                    int term = CarUn.ReadInt(-1);
+                    if (term >= 1 && term <= maxTerm)
+                    {
+                        newPol.Term = term;
+                        termValid = 1;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Срок должен быть от 1 до " + maxTerm + "!");
+                        if (CarUn.AskRetryOrExit() == 0) valid = 0;
+                    }
+                }
+                // 5. Расчёт стоимости
+                if (valid == 1)
+                {
+                    newPol.Cost = CarUn.CalculatePolicyCost(cars[carIndex], newPol);
+                    if (CarUn.AddPolicy(policies, ref policyCount, MAX_POLICIES, newPol) == 1)
+                    {
+                        string typeStr = (newPol.Type == 1) ? "ОСАГО" : "КАСКО";
+                        Console.WriteLine("[Успех] Полис " + typeStr + " на авто " + newPol.CarNumber +
+                            " успешно оформлен! Стоимость: " + newPol.Cost.ToString("F2") + " тыс. руб.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("[Ошибка] Не удалось добавить полис (переполнение).");
                     }
                 }
             }

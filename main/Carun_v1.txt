@@ -1,0 +1,490 @@
+using System;
+using System.IO;
+
+namespace Lab1_Cars
+{
+    public class CarUn
+    {
+        // Массивы марок и моделей
+        public static readonly string[] Brands = { "Audi", "Chevrolet", "BMW", "Subaru", "Mercedes-Benz", "Lada" };
+        public const int BrandsCount = 6;
+        public const int ModelsPerBrand = 4;
+
+        public static readonly string[][] Models =
+        {
+            new[] { "A4", "A6", "Q5", "Q7" },
+            new[] { "Camaro", "Corvette", "Tahoe", "Cruze" },
+            new[] { "3 Series", "5 Series", "X5", "M3" },
+            new[] { "Impreza", "Forester", "Outback", "WRX" },
+            new[] { "C-Class", "E-Class", "S-Class", "G-Class" },
+            new[] { "Vesta", "Granta", "Niva Legend", "Largus" }
+        };
+
+        // Допустимые буквы гос. номера (кириллица, только заглавные)
+        private const string PlateLetters = "АВЕКМНОРСТУХ";
+
+        // Ввод
+
+        // Чтение целого числа; при ошибке ввода возвращает onFail
+        public static int ReadInt(int onFail)
+        {
+            int value;
+            string s = Console.ReadLine();
+            if (s == null || !int.TryParse(s.Trim(), out value))
+            {
+                value = onFail;
+            }
+            return value;
+        }
+
+        // Запрос действия при ошибке
+        public static int AskRetryOrExit()
+        {
+            Console.Write("1. Ввести заново\n0. Выйти в меню\nВаш выбор: ");
+            return ReadInt(0);
+        }
+
+        // Обработка строк
+        // Валидация
+
+        public static int IsAllowedPlateLetter(char ch)
+        {
+            int allowed = 0;
+            int i = 0;
+            while (i < PlateLetters.Length && allowed == 0)
+            {
+                if (ch == PlateLetters[i])
+                {
+                    allowed = 1;
+                }
+                i++;
+            }
+            return allowed;
+        }
+
+        public static int IsValidNumber(string number)
+        {
+            int res = 0;
+            if (number != null && number.Length == 6)
+            {
+                if (IsAllowedPlateLetter(number[0]) == 1 &&
+                    (number[1] >= '0' && number[1] <= '9') &&
+                    (number[2] >= '0' && number[2] <= '9') &&
+                    (number[3] >= '0' && number[3] <= '9') &&
+                    IsAllowedPlateLetter(number[4]) == 1 &&
+                    IsAllowedPlateLetter(number[5]) == 1)
+                {
+                    res = 1;
+                }
+            }
+            return res;
+        }
+
+        public static int IsValidBrand(string brand)
+        {
+            int res = 0;
+            if (brand != null)
+            {
+                int i = 0;
+                while (i < BrandsCount && res == 0)
+                {
+                    if (string.Compare(brand, Brands[i], StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        res = 1;
+                    }
+                    i++;
+                }
+            }
+            return res;
+        }
+
+        public static int IsValidModel(string brand, string model)
+        {
+            int res = 0;
+            if (brand != null && model != null)
+            {
+                int brandIndex = -1;
+                int i = 0;
+                while (i < BrandsCount && brandIndex == -1)
+                {
+                    if (string.Compare(brand, Brands[i], StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        brandIndex = i;
+                    }
+                    i++;
+                }
+                if (brandIndex != -1)
+                {
+                    int m = 0;
+                    while (m < ModelsPerBrand && res == 0)
+                    {
+                        if (string.Compare(model, Models[brandIndex][m], StringComparison.OrdinalIgnoreCase) == 0)
+                        {
+                            res = 1;
+                        }
+                        m++;
+                    }
+                }
+            }
+            return res;
+        }
+
+        public static int IsValidFIO(string text, int minLen, int maxLen)
+        {
+            int res = 1;
+            if (text == null)
+            {
+                res = 0;
+            }
+            else
+            {
+                int len = text.Length;
+                if (len < minLen || len > maxLen)
+                {
+                    res = 0;
+                }
+                // Пробелы в начале и конце запрещены
+                else if (text[0] == ' ' || text[len - 1] == ' ')
+                {
+                    res = 0;
+                }
+                // Дефис не может быть первым или последним символом
+                else if (text[0] == '-' || text[len - 1] == '-')
+                {
+                    res = 0;
+                }
+                else
+                {
+                    int i = 0;
+                    while (i < len && res == 1)
+                    {
+                        // Запрет двойных пробелов
+                        if (text[i] == ' ' && i > 0 && text[i - 1] == ' ')
+                        {
+                            res = 0;
+                        }
+                        // Запрет цифр
+                        else if (char.IsDigit(text[i]))
+                        {
+                            res = 0;
+                        }
+                        // Запрет всех спецсимволов, кроме дефиса
+                        else if ((char.IsPunctuation(text[i]) || char.IsSymbol(text[i])) && text[i] != '-')
+                        {
+                            res = 0;
+                        }
+                        i++;
+                    }
+                }
+            }
+            return res;
+        }
+
+        public static int IsValidPatronymic(string text)
+        {
+            int res = 0;
+            if (text != null)
+            {
+                if (text == "-")
+                {
+                    res = 1;
+                }
+                else
+                {
+                    res = IsValidFIO(text, 2, 25);
+                }
+            }
+            return res;
+        }
+
+        // ---------- Загрузка из файла ----------
+
+        // Формат файла: на каждую запись 7 строк:
+        // марка, модель, номер, фамилия, имя, отчество, статус ТО (0/1)
+        public static int AddFromTextFile(TCar[] cars, ref int count, int maxCount, StreamReader txtFile)
+        {
+            int success = 0;
+            if (txtFile != null && count < maxCount)
+            {
+                int reading = 1;
+                while (count < maxCount && reading == 1)
+                {
+                    string brand = txtFile.ReadLine();
+                    if (brand != null)
+                    {
+                        if (brand.Length > 0)
+                        {
+                            string model = txtFile.ReadLine();
+                            string number = txtFile.ReadLine();
+                            string surname = txtFile.ReadLine();
+                            string name = txtFile.ReadLine();
+                            string patronymic = txtFile.ReadLine();
+                            string buf = txtFile.ReadLine();
+
+                            if (model != null && number != null && surname != null &&
+                                name != null && patronymic != null && buf != null)
+                            {
+                                TCar car = TCar.ZeroRec;
+                                car.Brand = brand;
+                                car.Model = model;
+                                car.Number = number;
+                                car.Owner.Surname = surname;
+                                car.Owner.Name = name;
+                                car.Owner.Patronymic = patronymic;
+
+                                int inspection;
+                                if (!int.TryParse(buf.Trim(), out inspection))
+                                {
+                                    inspection = -1;
+                                }
+                                car.HasInspection = inspection;
+
+                                if (IsValidBrand(car.Brand) == 1 &&
+                                    IsValidModel(car.Brand, car.Model) == 1 &&
+                                    IsValidNumber(car.Number) == 1 &&
+                                    IsValidFIO(car.Owner.Surname, 1, 20) == 1 &&
+                                    IsValidFIO(car.Owner.Name, 2, 20) == 1 &&
+                                    IsValidPatronymic(car.Owner.Patronymic) == 1 &&
+                                    (car.HasInspection == 0 || car.HasInspection == 1))
+                                {
+                                    cars[count] = car;
+                                    count++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("[Предупреждение] Пропущена некорректная запись из файла.");
+                                }
+                            }
+                            else
+                            {
+                                reading = 0;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        reading = 0;
+                    }
+                }
+                success = 1;
+            }
+            return success;
+        }
+
+        // Сортировка (пузырьком)
+
+        public static void SortBySurname(TCar[] cars, int count)
+        {
+            if (count >= 2)
+            {
+                int i = 0;
+                while (i < count - 1)
+                {
+                    int j = 0;
+                    while (j < count - i - 1)
+                    {
+                        if (string.Compare(cars[j].Owner.Surname, cars[j + 1].Owner.Surname, StringComparison.OrdinalIgnoreCase) > 0)
+                        {
+                            TCar temp = cars[j];
+                            cars[j] = cars[j + 1];
+                            cars[j + 1] = temp;
+                        }
+                        j++;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        public static void SortByBrand(TCar[] cars, int count)
+        {
+            if (count >= 2)
+            {
+                int i = 0;
+                while (i < count - 1)
+                {
+                    int j = 0;
+                    while (j < count - i - 1)
+                    {
+                        if (string.Compare(cars[j].Brand, cars[j + 1].Brand, StringComparison.OrdinalIgnoreCase) > 0)
+                        {
+                            TCar temp = cars[j];
+                            cars[j] = cars[j + 1];
+                            cars[j + 1] = temp;
+                        }
+                        j++;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        public static void SortByModel(TCar[] cars, int count)
+        {
+            if (count >= 2)
+            {
+                int i = 0;
+                while (i < count - 1)
+                {
+                    int j = 0;
+                    while (j < count - i - 1)
+                    {
+                        if (string.Compare(cars[j].Model, cars[j + 1].Model, StringComparison.OrdinalIgnoreCase) > 0)
+                        {
+                            TCar temp = cars[j];
+                            cars[j] = cars[j + 1];
+                            cars[j + 1] = temp;
+                        }
+                        j++;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        public static void SortByNumber(TCar[] cars, int count)
+        {
+            if (count >= 2)
+            {
+                int i = 0;
+                while (i < count - 1)
+                {
+                    int j = 0;
+                    while (j < count - i - 1)
+                    {
+                        if (string.Compare(cars[j].Number, cars[j + 1].Number, StringComparison.OrdinalIgnoreCase) > 0)
+                        {
+                            TCar temp = cars[j];
+                            cars[j] = cars[j + 1];
+                            cars[j + 1] = temp;
+                        }
+                        j++;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        public static void SortByInspection(TCar[] cars, int count)
+        {
+            if (count >= 2)
+            {
+                int i = 0;
+                while (i < count - 1)
+                {
+                    int j = 0;
+                    while (j < count - i - 1)
+                    {
+                        if (cars[j].HasInspection > cars[j + 1].HasInspection)
+                        {
+                            TCar temp = cars[j];
+                            cars[j] = cars[j + 1];
+                            cars[j + 1] = temp;
+                        }
+                        j++;
+                    }
+                    i++;
+                }
+            }
+        }
+
+        // Фильтр
+
+        public static int FilterFailedInspectionByBrand(TCar[] cars, int count, string targetBrand, TCar[] resultCars)
+        {
+            int resultCount = 0;
+            int i = 0;
+            while (i < count)
+            {
+                if (string.Compare(cars[i].Brand, targetBrand, StringComparison.OrdinalIgnoreCase) == 0 && cars[i].HasInspection == 0)
+                {
+                    resultCars[resultCount] = cars[i];
+                    resultCount++;
+                }
+                i++;
+            }
+            return resultCount;
+        }
+
+        // Вывод
+
+        // Обрезка/дополнение строки до заданной ширины
+        private static string Fit(string s, int width)
+        {
+            if (s == null)
+            {
+                s = "";
+            }
+            if (s.Length > width)
+            {
+                s = s.Substring(0, width);
+            }
+            return s.PadRight(width);
+        }
+
+        private static string FullFio(TFIO fio)
+        {
+            return fio.Surname + " " + fio.Name + " " + fio.Patronymic;
+        }
+
+        public static void PrintAllCarsTable(TCar[] cars, int count)
+        {
+            if (count == 0)
+            {
+                Console.WriteLine("Список автомобилей пуст.\n");
+            }
+            else
+            {
+                string line = new string('=', 109);
+                Console.WriteLine(line);
+                Console.WriteLine(Fit("Марка", 15) + " | " + Fit("Модель", 12) + " | " + Fit("Номер", 8) + " | " +
+                                  Fit("ФИО Владельца", 50) + " | " + Fit("Статус ТО", 12));
+                Console.WriteLine(line);
+                int i = 0;
+                while (i < count)
+                {
+                    Console.WriteLine(Fit(cars[i].Brand, 15) + " | " + Fit(cars[i].Model, 12) + " | " +
+                                      Fit(cars[i].Number, 8) + " | " + Fit(FullFio(cars[i].Owner), 50) + " | " +
+                                      Fit(cars[i].HasInspection == 1 ? "Пройден" : "Не пройден", 12));
+                    i++;
+                }
+                Console.WriteLine(line + "\n");
+            }
+        }
+
+        public static void PrintFailedInspectionResults(TCar[] resultCars, int resultCount, string targetBrand)
+        {
+            string line = new string('=', 50);
+            Console.WriteLine("\n=== Результаты поиска ===");
+            Console.WriteLine("Автомобили марки \"" + targetBrand + "\", не прошедшие ТО:\n");
+            Console.WriteLine(line);
+            Console.WriteLine(Fit("Номер", 10) + " | " + Fit("ФИО Владельца", 35));
+            Console.WriteLine(line);
+            int i = 0;
+            while (i < resultCount)
+            {
+                Console.WriteLine(Fit(resultCars[i].Number, 10) + " | " + Fit(FullFio(resultCars[i].Owner), 35));
+                i++;
+            }
+            Console.WriteLine(line);
+            Console.WriteLine("Всего автомобилей марки \"" + targetBrand + "\" без ТО: " + resultCount + "\n");
+        }
+
+        // Добавление
+
+        public static int AddCar(TCar[] cars, ref int count, int maxCount, TCar newCar)
+        {
+            int status = 1;
+            if (count >= maxCount)
+            {
+                status = 0;
+            }
+            else
+            {
+                cars[count] = newCar;
+                count++;
+            }
+            return status;
+        }
+    }
+}

@@ -1,29 +1,64 @@
-namespace Lab1_Cars
+using System;
+namespace Lab1_Insurance
 {
-    // Структура 1: ФИО владельца
+    // Модель автомобиля
+    public struct TModel
+    {
+        public string Name;        // название модели (например, "A4")
+        public int Year;           // год выпуска (1894..2026)
+        public double Power;       // мощность двигателя, л.с. (3.4..1250)
+        public double Coef;        // коэффициент страхования модели (0.8..2.0)
+        public double Price;       // базовая цена, млн руб. (0.01..200.00)
+    }
+    // ФИО владельца
     public struct TFIO
     {
         public string Surname;     // фамилия, до 20 символов
         public string Name;        // имя, до 20 символов
         public string Patronymic;  // отчество, до 25 символов ("-" если нет)
+        public int Age;            // возраст (18..122)
+        public int Exp;            // стаж (0..104)
     }
-
-    // Структура 2: данные об автомобиле
+    // Данные об автомобиле
     public struct TCar
     {
         public string Brand;       // марка
-        public string Model;       // модель
+        public string Model;       // модель (только название, например "A4")
         public string Number;      // гос. номер, 6 символов
         public TFIO Owner;         // владелец
-        public int HasInspection;  // 1 - пройден, 0 - не пройден
-
+        public int HasInspection;  // 1 - пройден ТО, 0 - не пройден
+        // Пустая заготовка для инициализации
         public static readonly TCar ZeroRec = new TCar
         {
             Brand = "",
             Model = "",
             Number = "",
-            Owner = new TFIO { Surname = "", Name = "", Patronymic = "" },
+            Owner = new TFIO
+            {
+                Surname = "",
+                Name = "",
+                Patronymic = "",
+                Age = 0,
+                Exp = 0
+            },
             HasInspection = 0
+        };
+    }
+    // Страховой полис
+    public struct TPolicy
+    {
+        public int Type;           // 1 - ОСАГО, 2 - КАСКО
+        public string CarNumber;   // номер автомобиля, на который оформлен
+        public DateTime Date;      // дата оформления
+        public int Term;           // срок действия, месяцы (1..84)
+        public double Cost;        // стоимость, тыс. руб. (вычисляется)
+        public static readonly TPolicy ZeroRec = new TPolicy
+        {
+            Type = 0,
+            CarNumber = "",
+            Date = DateTime.MinValue,
+            Term = 0,
+            Cost = 0.0
         };
     }
 }
