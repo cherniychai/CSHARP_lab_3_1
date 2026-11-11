@@ -85,6 +85,8 @@ namespace Lab2_Insurance
                 }
                 else if (choice == 6)
                 {
+                    Console.WriteLine("\n--- ТЕКУЩИЙ СПИСОК АВТОМОБИЛЕЙ ---");
+                    CarUn.PrintAllCarsTable(cars, carCount);
                     AddPolicyMenu(cars, carCount, policies, ref policyCount);
                 }
             }
@@ -389,7 +391,7 @@ namespace Lab2_Insurance
                 while (carIndex == -1 && valid == 1)
                 {
                     Console.WriteLine("\n--- АВТОМОБИЛЬ ---");
-                    Console.Write("Введите гос. номер автомобиля: ");
+                    Console.Write("Введите гос. номер существующего автомобиля: ");
                     carNumber = Console.ReadLine();
                     if (carNumber == null) carNumber = "";
                     carIndex = CarUn.FindCarByNumber(cars, carCount, carNumber);
@@ -421,7 +423,7 @@ namespace Lab2_Insurance
                         // Проверка: нет ли уже активного полиса такого типа
                         else if (CarUn.CanIssuePolicy(policies, policyCount, carNumber, type) == 0)
                         {
-                            Console.WriteLine("[Ошибка] На этот автомобиль уже оформлен активный полис данного типа!");
+                            Console.WriteLine("[Ошибка] На этот автомобиль уже был оформлен полис данного типа!");
                             if (CarUn.AskRetryOrExit() == 0) valid = 0;
                         }
                         else
